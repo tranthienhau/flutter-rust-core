@@ -1,0 +1,24 @@
+[package]
+name = "flutter_rust_core_ffi"
+version = "0.1.0"
+edition = "2021"
+description = "Shared Rust core powering iOS/Android via C-ABI FFI"
+license = "MIT"
+
+[lib]
+name = "flutter_rust_core_ffi"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+sha2 = "0.10"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+once_cell = "1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+strip = true
+panic = "abort"
