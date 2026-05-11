@@ -34,16 +34,22 @@ class HomePage extends ConsumerWidget {
         title: Text('Rust core v$version'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: const [
-            _HashCard(),
-            SizedBox(height: 16),
-            _EmailCard(),
-            SizedBox(height: 16),
-            _JsonCard(),
-          ],
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: ListView(
+            keyboardDismissBehavior:
+                ScrollViewKeyboardDismissBehavior.onDrag,
+            children: const [
+              _HashCard(),
+              SizedBox(height: 16),
+              _EmailCard(),
+              SizedBox(height: 16),
+              _JsonCard(),
+            ],
+          ),
         ),
       ),
     );
