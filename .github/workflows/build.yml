@@ -1,0 +1,136 @@
+name: build-rust-core
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: cargo test (host)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: cargo fmt
+        working-directory: rust
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        working-directory: rust
+        run: cargo clippy --release --all-targets -- -D warnings
+      - name: cargo test
+        working-directory: rust
+        run: cargo test --release
+
+  ios:
+    name: build iOS xcframework
+    runs-on: macos-14
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: build_ios.sh
+        run: bash scripts/build_ios.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flutter_rust_core_ffi-ios-xcframework
+          path: ios/Frameworks/flutter_rust_core_ffi.xcframework
+          if-no-files-found: error
+
+  android:
+    name: build Android .so (all ABIs)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r26d
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: install cargo-ndk
+        run: cargo install cargo-ndk --locked
+      - name: build_android.sh
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: bash scripts/build_android.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flutter_rust_core_ffi-android-jniLibs
+          path: android/app/src/main/jniLibs
+          if-no-files-found: error
+
+  macos:
+    name: build macOS universal dylib
+    runs-on: macos-14
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: build arm64
+        working-directory: rust
+        run: cargo build --release --target aarch64-apple-darwin
+      - name: build x86_64
+        working-directory: rust
+        run: cargo build --release --target x86_64-apple-darwin
+      - name: lipo universal
+        working-directory: rust
+        run: |
+          mkdir -p target/macos-universal/release
+          lipo -create \
+            target/aarch64-apple-darwin/release/libflutter_rust_core_ffi.dylib \
+            target/x86_64-apple-darwin/release/libflutter_rust_core_ffi.dylib \
+            -output target/macos-universal/release/libflutter_rust_core_ffi.dylib
+          lipo -info target/macos-universal/release/libflutter_rust_core_ffi.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flutter_rust_core_ffi-macos-universal
+          path: rust/target/macos-universal/release/libflutter_rust_core_ffi.dylib
+          if-no-files-found: error
+
+  windows:
+    name: build Windows DLL
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: cargo build
+        working-directory: rust
+        run: cargo build --release --target x86_64-pc-windows-msvc
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flutter_rust_core_ffi-windows-x86_64
+          path: |
+            rust/target/x86_64-pc-windows-msvc/release/flutter_rust_core_ffi.dll
+            rust/target/x86_64-pc-windows-msvc/release/flutter_rust_core_ffi.dll.lib
+          if-no-files-found: error
