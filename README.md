@@ -29,6 +29,24 @@ scripts/build_android.sh Uses cargo-ndk to drop .so into jniLibs
 - Riverpod `StateNotifier`s wrap each call so the UI never touches FFI
   pointers directly.
 
+## Screenshots
+
+Captured from `Medium_Phone_API_36.2` Android emulator (arm64) running the
+debug APK. Each card calls a different `extern "C"` Rust function over
+`dart:ffi`.
+
+| Home (cold start) | SHA-256 over Rust |
+|---|---|
+| ![home](docs/screenshots/01-home.png) | ![sha256](docs/screenshots/02-sha256.png) |
+
+| Email invalid | Email valid |
+|---|---|
+| ![email-invalid](docs/screenshots/03-email-invalid.png) | ![email-valid](docs/screenshots/04-email-valid.png) |
+
+| JSON enrich |
+|---|
+| ![json](docs/screenshots/05-json-enrich.png) |
+
 ## Build
 
 ```bash
